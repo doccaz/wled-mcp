@@ -1,0 +1,71 @@
+{{- if .Values.mqtt.embedded.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "wled-mcp.mosquittoFullname" . }}
+  labels: {{- include "wled-mcp.labels" . | nindent 4 }}
+data:
+  mosquitto.conf: |
+    listener 1883
+    {{- if .Values.mqtt.embedded.anonymous }}
+    allow_anonymous true
+    {{- else }}
+    allow_anonymous false
+    password_file /mosquitto/secret/passwd
+    {{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "wled-mcp.mosquittoFullname" . }}
+  labels: {{- include "wled-mcp.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "wled-mcp.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: mosquitto
+  template:
+    metadata:
+      labels:
+        {{- include "wled-mcp.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: mosquitto
+    spec:
+      containers:
+        - name: mosquitto
+          image: {{ .Values.mqtt.embedded.image | quote }}
+          ports:
+            - name: mqtt
+              containerPort: 1883
+          volumeMounts:
+            - name: config
+              mountPath: /mosquitto/config
+              readOnly: true
+          readinessProbe:
+            tcpSocket: { port: mqtt }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "wled-mcp.mosquittoFullname" . }}
+            items:
+              - key: mosquitto.conf
+                path: mosquitto.conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "wled-mcp.mosquittoFullname" . }}
+  labels: {{- include "wled-mcp.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "wled-mcp.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: mosquitto
+  ports:
+    - name: mqtt
+      port: 1883
+      targetPort: mqtt
+{{- end }}

@@ -1,0 +1,120 @@
+# Default values for wled-mcp.
+# Override with `helm install -f my-values.yaml ...`.
+
+# -----------------------------------------------------------------------------
+# Application image
+# -----------------------------------------------------------------------------
+image:
+  repository: ghcr.io/your-org/wled-mcp
+  tag: ""                # defaults to .Chart.AppVersion when empty
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# Override the default name pieces.
+nameOverride: ""
+fullnameOverride: ""
+
+# -----------------------------------------------------------------------------
+# Deployment
+# -----------------------------------------------------------------------------
+replicaCount: 1
+
+resources:
+  requests: { cpu: 25m,  memory: 64Mi }
+  limits:   { cpu: 500m, memory: 256Mi }
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  readOnlyRootFilesystem: true
+  seccompProfile:
+    type: RuntimeDefault
+
+service:
+  type: ClusterIP
+  port: 80          # service port
+  targetPort: 8080  # container port
+
+# -----------------------------------------------------------------------------
+# MQTT broker the agent connects to
+# -----------------------------------------------------------------------------
+# Two modes:
+#   1. external broker -> set mqtt.host / port / credentials below.
+#   2. embedded Mosquitto -> set mqtt.embedded.enabled=true; the chart
+#      will deploy a tiny Mosquitto and point the agent at it (mqtt.host
+#      and mqtt.port are then ignored).
+mqtt:
+  host: mosquitto.iot.svc.cluster.local
+  port: 1883
+  tls: false
+  qos: 0
+  clientId: wled-mcp-agent
+
+  # Username/password for the broker.  Two ways to provide them:
+  #   a. inline (NOT recommended outside dev): set username/password here
+  #      and the chart creates a Secret for you.
+  #   b. existing Secret: set existingSecret to a Secret with keys
+  #      `username` and `password`; inline values are ignored.
+  username: ""
+  password: ""
+  existingSecret: ""
+
+  embedded:
+    enabled: false               # deploy an in-chart Mosquitto for dev
+    image: docker.io/eclipse-mosquitto:2.0
+    # Allow anonymous connections.  When false, set mqtt.username/password
+    # above and the broker will be configured with a matching auth file.
+    anonymous: true
+
+# -----------------------------------------------------------------------------
+# WLED devices the agent will control.
+#
+# The MQTT topic for each device is computed as:
+#   <topicPrefix>/<name>/api
+# Both fields must match the WLED device's "Sync Interfaces -> MQTT" page.
+# -----------------------------------------------------------------------------
+devices:
+  - id: living-room
+    name: wled-livingroom
+    topicPrefix: wled
+    description: 3m strip behind the TV
+  - id: desk
+    name: wled-desk
+    topicPrefix: wled
+    description: Desk underglow
+
+# -----------------------------------------------------------------------------
+# Friendly aliases for WLED effect IDs.  Numeric ids:
+#   https://kno.wled.ge/features/effects/
+# -----------------------------------------------------------------------------
+effects:
+  solid:      { id: 0,  description: Solid color }
+  rainbow:    { id: 9,  description: Rainbow cycle }
+  breathe:    { id: 2,  description: Slow pulse }
+  fireworks:  { id: 42, description: Color bursts }
+  fire:       { id: 66, description: Fire simulation }
+  party:      { id: 89, description: Multi-color chase }
+
+# -----------------------------------------------------------------------------
+# Liz (SUSE Rancher AI Assistant) registration
+# -----------------------------------------------------------------------------
+# When enabled, the chart creates an `AIAgentConfig` (ai.cattle.io/v1alpha1)
+# that registers this MCP server as a specialized agent.  The CRD must
+# already be installed on the cluster (it ships with rancher-ai-agent).
+liz:
+  register: true
+  # The namespace where rancher-ai-agent runs; typically you install this
+  # chart there too so the Service DNS works without cross-namespace setup.
+  namespace: cattle-ai-agent-system
+  agentName: wled
+  displayName: WLED-Lighting
+  authenticationType: NONE     # NONE | BASIC | RANCHER

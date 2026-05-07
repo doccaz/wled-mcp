@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "wled-mcp.fullname" . }}
+  labels: {{- include "wled-mcp.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    mqtt:
+      host: {{ include "wled-mcp.mqttHost" . | quote }}
+      port: {{ include "wled-mcp.mqttPort" . }}
+      tls: {{ .Values.mqtt.tls }}
+      qos: {{ .Values.mqtt.qos }}
+      client_id: {{ .Values.mqtt.clientId | quote }}
+    devices:
+{{- range .Values.devices }}
+      - id: {{ .id | quote }}
+        name: {{ .name | quote }}
+        topic_prefix: {{ .topicPrefix | default "wled" | quote }}
+        {{- with .description }}
+        description: {{ . | quote }}
+        {{- end }}
+{{- end }}
+    effects:
+{{- range $alias, $spec := .Values.effects }}
+      {{ $alias }}:
+        id: {{ $spec.id }}
+        description: {{ $spec.description | default "" | quote }}
+{{- end }}

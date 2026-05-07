@@ -1,0 +1,104 @@
+name: build-and-push
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  # ${{ github.repository }} is "<owner>/<repo>"; lower-cased below.
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Lint Python + Helm chart on every push/PR
+  # ---------------------------------------------------------------------------
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff
+
+      - name: Lint Python
+        run: ruff check mcp_agent
+
+      - name: Compile-check Python
+        run: python -m compileall -q mcp_agent
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: latest
+
+      - name: Helm lint
+        run: helm lint charts/wled-mcp
+
+      - name: Helm template (default values)
+        run: helm template wled-mcp charts/wled-mcp > /tmp/render-default.yaml
+
+      - name: Helm template (embedded broker)
+        run: |
+          helm template wled-mcp charts/wled-mcp \
+            --set mqtt.embedded.enabled=true \
+            > /tmp/render-embedded.yaml
+
+  # ---------------------------------------------------------------------------
+  # Build & push multi-arch image to GHCR.
+  # Skipped on PRs (no creds available), runs on main and on version tags.
+  # ---------------------------------------------------------------------------
+  build:
+    needs: lint
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write       # required to push to GHCR
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lower-case image name
+        id: img
+        run: echo "name=${IMAGE_NAME,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.img.outputs.name }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

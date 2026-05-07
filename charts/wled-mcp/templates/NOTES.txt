@@ -1,0 +1,33 @@
+WLED MCP agent installed.
+
+In-cluster MCP endpoint:
+  http://{{ include "wled-mcp.fullname" . }}.{{ .Release.Namespace }}.svc/mcp
+
+{{- if .Values.mqtt.embedded.enabled }}
+
+Embedded Mosquitto broker:
+  {{ include "wled-mcp.mosquittoFullname" . }}.{{ .Release.Namespace }}.svc:1883
+{{- else }}
+
+Connecting to external broker:
+  {{ .Values.mqtt.host }}:{{ .Values.mqtt.port }}
+{{- end }}
+
+{{- if .Values.liz.register }}
+
+Registered with Liz as AIAgentConfig "{{ .Values.liz.agentName }}" in
+namespace {{ .Values.liz.namespace }}.  If Liz does not pick the agent up
+within a minute, restart the assistant:
+
+  kubectl rollout restart deployment -n {{ .Values.liz.namespace }} rancher-ai-agent
+{{- else }}
+
+Liz registration is disabled (liz.register=false).  Enable it with:
+
+  helm upgrade {{ .Release.Name }} <chart> --set liz.register=true
+{{- end }}
+
+Configured devices:
+{{- range .Values.devices }}
+  - {{ .id }} -> {{ .topicPrefix | default "wled" }}/{{ .name }}/api
+{{- end }}
