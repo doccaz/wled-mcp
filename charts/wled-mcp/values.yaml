@@ -5,7 +5,7 @@
 # Application image
 # -----------------------------------------------------------------------------
 image:
-  repository: ghcr.io/your-org/wled-mcp
+  repository: ghcr.io/doccaz/wled-mcp
   tag: ""                # defaults to .Chart.AppVersion when empty
   pullPolicy: IfNotPresent
 imagePullSecrets: []
