@@ -104,8 +104,8 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ---------------------------------------------------------------------------
-  # Package Helm chart, cut a GitHub Release, and update index.yaml on gh-pages
-  # so the repo can be used as a Helm chart repository.
+  # Package Helm chart and update index.yaml on gh-pages.
+  # Tarballs are stored in gh-pages so index.yaml URLs resolve via GitHub Pages.
   # Requires: GitHub Pages enabled on the gh-pages branch (repo Settings → Pages).
   # ---------------------------------------------------------------------------
   chart-release:
@@ -115,20 +115,28 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0          # chart-releaser needs full history
+      - uses: actions/checkout@v4   # main — chart source
 
-      - name: Configure Git
-        run: |
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+      - uses: actions/checkout@v4   # gh-pages — index target
+        with:
+          ref: gh-pages
+          path: gh-pages
 
       - uses: azure/setup-helm@v4
         with:
           version: latest
 
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.6.0
-        env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      - name: Package chart into gh-pages
+        run: helm package charts/wled-mcp --destination gh-pages
+
+      - name: Regenerate index.yaml
+        run: helm repo index gh-pages --url https://doccaz.github.io/wled-mcp
+
+      - name: Commit and push
+        working-directory: gh-pages
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+          git add .
+          git diff --staged --quiet || git commit -m "Release $(ls *.tgz | head -1)"
+          git push origin gh-pages
