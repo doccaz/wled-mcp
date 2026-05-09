@@ -45,7 +45,8 @@ class MqttPublisher:
 
     def connect(self) -> None:
         log.info("Connecting to MQTT broker %s:%s", self._cfg.mqtt.host, self._cfg.mqtt.port)
-        self._client.connect(self._cfg.mqtt.host, self._cfg.mqtt.port, keepalive=60)
+        self._client.reconnect_delay_set(min_delay=1, max_delay=60)
+        self._client.connect_async(self._cfg.mqtt.host, self._cfg.mqtt.port, keepalive=60)
         self._client.loop_start()
 
     def disconnect(self) -> None:
@@ -67,7 +68,6 @@ class MqttPublisher:
 # --------------------------------------------------------------------------- #
 CONFIG: AppConfig = load_config(os.environ.get("WLED_MCP_CONFIG", "/etc/wled-mcp/config.yaml"))
 MQTT = MqttPublisher(CONFIG)
-MQTT.connect()
 
 # Streamable HTTP is required by Liz.  FastMCP exposes it on /mcp by default.
 mcp = FastMCP(
@@ -281,6 +281,7 @@ def set_wled_palette(device_id: str, palette_id: int) -> str:
 def main() -> None:
     host = os.environ.get("MCP_HTTP_HOST", "0.0.0.0")
     port = int(os.environ.get("MCP_HTTP_PORT", "8080"))
+    MQTT.connect()
     log.info("Starting WLED MCP server (Streamable HTTP) on %s:%s", host, port)
     # FastMCP serves the streamable-http transport on /mcp.
     mcp.settings.host = host

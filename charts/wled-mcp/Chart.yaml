@@ -4,8 +4,8 @@ description: |
   MCP server that lets SUSE Rancher Liz control WLED LED-strip devices
   via MQTT.  Optionally deploys an embedded Mosquitto broker for testing.
 type: application
-version: 0.1.0
-appVersion: "0.1.0"
+version: 0.1.1
+appVersion: "0.1.1"
 home: https://kno.wled.ge/
 keywords:
   - mcp
