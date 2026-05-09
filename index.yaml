@@ -2,8 +2,29 @@ apiVersion: v1
 entries:
   wled-mcp:
   - apiVersion: v2
+    appVersion: 0.1.1
+    created: "2026-05-09T03:42:52.902306036Z"
+    description: 'MCP server that lets SUSE Rancher Liz control WLED LED-strip devices
+      via MQTT.  Optionally deploys an embedded Mosquitto broker for testing. '
+    digest: 316f264c644d5abf9c8d856f043b4ec47fbc3fd349c0dc962fe2d646efa03701
+    home: https://kno.wled.ge/
+    keywords:
+    - mcp
+    - liz
+    - rancher-ai
+    - wled
+    - mqtt
+    - iot
+    maintainers:
+    - name: your-team
+    name: wled-mcp
+    type: application
+    urls:
+    - https://doccaz.github.io/wled-mcp/wled-mcp-0.1.1.tgz
+    version: 0.1.1
+  - apiVersion: v2
     appVersion: 0.1.0
-    created: "2026-05-09T03:25:53.819840362Z"
+    created: "2026-05-09T03:42:52.901653845Z"
     description: 'MCP server that lets SUSE Rancher Liz control WLED LED-strip devices
       via MQTT.  Optionally deploys an embedded Mosquitto broker for testing. '
     digest: 93cb0b93d71327e74e38fec254a8964e454bd833f25c7b286d4d9a3b06a07faf
@@ -22,4 +43,4 @@ entries:
     urls:
     - https://doccaz.github.io/wled-mcp/wled-mcp-0.1.0.tgz
     version: 0.1.0
-generated: "2026-05-09T03:25:53.819109719Z"
+generated: "2026-05-09T03:42:52.900065632Z"
