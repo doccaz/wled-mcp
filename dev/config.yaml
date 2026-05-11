@@ -1,0 +1,28 @@
+mqtt:
+  host: mosquitto
+  port: 1883
+
+devices:
+  - id: living-room
+    name: wled-livingroom
+    topic_prefix: wled
+    description: 3m strip behind the TV
+
+  - id: desk
+    name: wled-desk
+    topic_prefix: wled
+    description: Desk underglow
+
+effects:
+  solid:
+    id: 0
+    description: Solid color
+  breathe:
+    id: 2
+    description: Slow pulse
+  rainbow:
+    id: 9
+    description: Rainbow cycle
+  fireworks:
+    id: 42
+    description: Color bursts
