@@ -55,6 +55,43 @@ Each tool publishes a JSON payload to `<topicPrefix>/<name>/api`.
             └── aiagentconfig.yaml   # registers the agent with Liz
 ```
 
+## Local testing (no Kubernetes)
+
+```bash
+# Start Mosquitto + wled-mcp + traffic sniffer
+docker compose up --build
+```
+
+In a second terminal, initialize a session and call tools:
+
+```bash
+# Step 1 — initialize and capture the session ID
+SESSION=$(curl -s -D - -X POST http://localhost:8080/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0"}}}' \
+  | grep -i "mcp-session-id" | awk '{print $2}' | tr -d '\r')
+
+# Step 2 — call a tool (responses are SSE, extract with grep+sed)
+curl -s -X POST http://localhost:8080/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: $SESSION" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_wled_devices","arguments":{}}}' \
+  | grep "^data:" | sed 's/^data: //' | python3 -m json.tool
+
+curl -s -X POST http://localhost:8080/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: $SESSION" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"set_wled_power","arguments":{"device_id":"desk","on":true}}}' \
+  | grep "^data:" | sed 's/^data: //' | python3 -m json.tool
+```
+
+Watch MQTT traffic in the first terminal — the `sniffer` service prints every
+message as it arrives (e.g. `wled/wled-desk/api {"on":true}`). No real WLED
+hardware is needed.
+
 ## Push to GitHub
 
 From the project root, with the [GitHub CLI](https://cli.github.com/):

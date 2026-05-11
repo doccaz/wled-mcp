@@ -76,11 +76,20 @@ Examples:
 # Start Mosquitto + wled-mcp (builds image from local Dockerfile)
 docker compose up --build
 
-# In another terminal — call any MCP tool directly
+# In another terminal — initialize a session first (Streamable HTTP requires it)
+SESSION=$(curl -s -D - -X POST http://localhost:8080/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0"}}}' \
+  | grep -i "mcp-session-id" | awk '{print $2}' | tr -d '\r')
+
+# Then call tools — responses are SSE, extract the data line
 curl -s -X POST http://localhost:8080/mcp \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
-       "params":{"name":"list_wled_devices","arguments":{}}}'
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: $SESSION" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_wled_devices","arguments":{}}}' \
+  | grep "^data:" | sed 's/^data: //' | python3 -m json.tool
 
 # Watch MQTT traffic in the sniffer service logs
 docker compose logs -f sniffer
